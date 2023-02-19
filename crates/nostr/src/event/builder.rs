@@ -175,6 +175,24 @@ impl EventBuilder {
         Self::new(Kind::TextNote, content, tags)
     }
 
+    /// Signature request
+    ///
+    /// TBD: NIP-70 <https://github.com/nostr-protocol/nips/blob/master/01.md>
+    ///
+    /// # Example
+    /// ```rust,no_run
+    /// use nostr::EventBuilder;
+    ///
+    /// let builder = EventBuilder::new_signature_request("Sign this payload", &[]);
+    /// ```
+    pub fn new_signature_request<S>(content: S, tags: &[Tag]) -> Self
+    where
+        S: Into<String>,
+    {
+        Self::new(Kind::SignatureRequest, content, tags)
+    }
+
+
     /// Long-form text note (generally referred to as "articles" or "blog posts").
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/23.md>
@@ -398,6 +416,22 @@ mod tests {
         )?);
 
         let event = EventBuilder::new_text_note("hello", &vec![]).to_event(&keys)?;
+
+        let serialized = event.as_json();
+        let deserialized = Event::from_json(serialized)?;
+
+        assert_eq!(event, deserialized);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_signature_request() -> Result<()> {
+        let keys = Keys::new(SecretKey::from_str(
+            "6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e",
+        )?);
+
+        let event = EventBuilder::new_signature_request("<payload>", &vec![]).to_event(&keys)?;
 
         let serialized = event.as_json();
         let deserialized = Event::from_json(serialized)?;
