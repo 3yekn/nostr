@@ -9,6 +9,7 @@ use std::str::FromStr;
 
 use secp256k1::schnorr::Signature;
 use secp256k1::XOnlyPublicKey;
+// use secp256k1::schnorrsig::Signature;
 use serde::de::Error as DeserializerError;
 use serde::ser::SerializeSeq;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -166,6 +167,10 @@ pub enum TagKind {
     Summary,
     /// PublishedAt (NIP23)
     PublishedAt,
+    /// Payload requesting to be signed (NIP70, kind 9991)
+    ToSignPayload,
+    /// Signature reply (NIP70, kind 9992)
+    Signature,
     /// Custom tag kind
     Custom(String),
 }
@@ -191,6 +196,8 @@ impl fmt::Display for TagKind {
             Self::Image => write!(f, "image"),
             Self::Summary => write!(f, "summary"),
             Self::PublishedAt => write!(f, "published_at"),
+            Self::ToSignPayload => write!(f, "to_sign"),
+            Self::Signature => write!(f, "signature"),
             Self::Custom(tag) => write!(f, "{tag}"),
         }
     }
@@ -221,6 +228,8 @@ where
             "image" => Self::Image,
             "summary" => Self::Summary,
             "published_at" => Self::PublishedAt,
+            "signature" => Self::Signature,
+            "to_sign" => Self::ToSignPayload,
             tag => Self::Custom(tag.to_string()),
         }
     }
@@ -269,6 +278,8 @@ pub enum Tag {
     Image(String),
     Summary(String),
     PublishedAt(Timestamp),
+    ToSignPayload(String),
+    Signature(Signature),
 }
 
 impl Tag {
@@ -325,6 +336,8 @@ where
                 TagKind::Image => Ok(Self::Image(content.to_string())),
                 TagKind::Summary => Ok(Self::Summary(content.to_string())),
                 TagKind::PublishedAt => Ok(Self::PublishedAt(Timestamp::from_str(content)?)),
+                TagKind::Signature => Ok(Self::Signature(Signature::from_slice(content.as_bytes())?)),
+                TagKind::ToSignPayload => Ok(Self::ToSignPayload(content.to_string())),
                 _ => Ok(Self::Generic(tag_kind, vec![content.to_string()])),
             }
         } else if tag_len == 3 {
@@ -480,6 +493,8 @@ impl From<Tag> for Vec<String> {
             Tag::Title(title) => vec![TagKind::Title.to_string(), title],
             Tag::Image(image) => vec![TagKind::Image.to_string(), image],
             Tag::Summary(summary) => vec![TagKind::Summary.to_string(), summary],
+            Tag::Signature(signature) => vec![TagKind::Signature.to_string(), signature.to_string()],
+            Tag::ToSignPayload(to_sign) => vec![TagKind::ToSignPayload.to_string(), to_sign],
             Tag::PublishedAt(timestamp) => {
                 vec![TagKind::PublishedAt.to_string(), timestamp.to_string()]
             }
@@ -835,6 +850,13 @@ mod tests {
             Tag::parse(vec!["subject", "textnote with subject"])?,
             Tag::Subject(String::from("textnote with subject"))
         );
+
+        assert_eq!(
+            Tag::parse(vec!["to_sign", "payload to sign"])?,
+            Tag::ToSignPayload(String::from("payload to sign"))
+        );
+
+        // @TODO: Add test for Signature Tag 
 
         assert_eq!(
             Tag::parse(vec!["client", "nostr-sdk"])?,

@@ -154,4 +154,21 @@ mod tests {
         assert_eq!(Kind::Custom(123), e.kind);
         assert_eq!(Kind::Custom(123), deserialized.kind);
     }
+
+    #[test]
+    fn test_signature_request() {
+        let keys = Keys::generate();
+        let e: Event = EventBuilder::new(Kind::SignatureRequest, "my content", &[])
+            .to_event(&keys)
+            .unwrap();
+
+        let serialized = e.as_json();
+        let deserialized = Event::from_json(serialized.clone()).unwrap();
+
+        println!("Event : {}", serialized.clone());
+
+        assert_eq!(e, deserialized);
+        assert_eq!(Kind::SignatureRequest, e.kind);
+        assert_eq!(Kind::SignatureRequest, deserialized.kind);
+    }
 }

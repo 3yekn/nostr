@@ -3,7 +3,7 @@
 
 //! Event builder
 
-use secp256k1::{KeyPair, Message, XOnlyPublicKey};
+use secp256k1::{schnorr::Signature, KeyPair, Message, XOnlyPublicKey};
 use serde_json::{json, Value};
 use url::Url;
 
@@ -174,6 +174,51 @@ impl EventBuilder {
     {
         Self::new(Kind::TextNote, content, tags)
     }
+
+    /// Signature request
+    ///
+    /// TBD: NIP-70 <https://github.com/nostr-protocol/nips/blob/master/01.md>
+    ///
+    /// # Example
+    /// ```rust,no_run
+    /// use nostr::EventBuilder;
+    ///
+    /// let builder = EventBuilder::new_signature_request("Sign this payload", Some("Here is supporting memo".to_string()), &[]);
+    /// ```
+    pub fn new_signature_request<S>(to_sign: S, content: Option<String>, tags: &[Tag]) -> Self
+    where
+        S: Into<String>,
+    {
+        let tags = [&vec![Tag::ToSignPayload(to_sign.into())], &tags[..]].concat();
+        Self::new(Kind::SignatureRequest, content.unwrap_or_default(), &tags)
+    }
+
+    /// Signature response
+    ///
+    /// TBD: NIP-70 <https://github.com/nostr-protocol/nips/blob/master/01.md>
+    ///
+    /// # Example
+    /// ```rust,no_run
+    /// use nostr::EventBuilder;
+    /// use nostr::SECP256K1;
+    /// use bitcoin_hashes::sha256::Hash as Sha256Hash;
+    /// use bitcoin_hashes::Hash;
+    /// use std::str::FromStr;
+    /// 
+    /// const ALICE_SK: &str = "0e1db7418df1c6453ce42e7f4507b8823fc23e86e1f4f33d7fafc83d366e6e97";
+    /// let alice_keys = nostr::Keys::new(secp256k1::SecretKey::from_str(ALICE_SK).unwrap());
+    /// let raw_payload_to_sign = "payload to sign".as_bytes();
+    /// let hashed_payload = Sha256Hash::hash(raw_payload_to_sign);
+    /// let message = secp256k1::Message::from_slice(&hashed_payload).unwrap();
+    /// let signature = SECP256K1.sign_schnorr(&message, &alice_keys.key_pair().unwrap());
+    /// let builder = EventBuilder::new_signature_response(signature, Some("Optional memo".to_string()), &[]);
+    /// ```
+    pub fn new_signature_response(signature: Signature, content: Option<String>, tags: &[Tag]) -> Self
+    {
+        let tags = [&vec![Tag::Signature(signature)], &tags[..]].concat();
+        Self::new(Kind::SignatureResponse, content.unwrap_or_default(), &tags)
+    }
+
 
     /// Long-form text note (generally referred to as "articles" or "blog posts").
     ///
@@ -398,6 +443,22 @@ mod tests {
         )?);
 
         let event = EventBuilder::new_text_note("hello", &vec![]).to_event(&keys)?;
+
+        let serialized = event.as_json();
+        let deserialized = Event::from_json(serialized)?;
+
+        assert_eq!(event, deserialized);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_signature_request() -> Result<()> {
+        let keys = Keys::new(SecretKey::from_str(
+            "6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e",
+        )?);
+
+        let event = EventBuilder::new_signature_request("<payload>", None, &vec![]).to_event(&keys)?;
 
         let serialized = event.as_json();
         let deserialized = Event::from_json(serialized)?;
