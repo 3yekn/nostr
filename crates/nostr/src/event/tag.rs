@@ -853,7 +853,7 @@ mod tests {
 
         assert_eq!(
             Tag::parse(vec!["to_sign", "payload to sign"])?,
-            Tag::Subject(String::from("payload to sign"))
+            Tag::ToSignPayload(String::from("payload to sign"))
         );
 
         // @TODO: Add test for Signature Tag 
