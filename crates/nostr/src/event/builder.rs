@@ -3,7 +3,7 @@
 
 //! Event builder
 
-use secp256k1::{KeyPair, Message, XOnlyPublicKey};
+use secp256k1::{schnorr::Signature, KeyPair, Message, XOnlyPublicKey};
 use serde_json::{json, Value};
 use url::Url;
 
@@ -183,13 +183,31 @@ impl EventBuilder {
     /// ```rust,no_run
     /// use nostr::EventBuilder;
     ///
-    /// let builder = EventBuilder::new_signature_request("Sign this payload", &[]);
+    /// let builder = EventBuilder::new_signature_request("Sign this payload", Some("Here is supporting memo"), &[]);
     /// ```
-    pub fn new_signature_request<S>(content: S, tags: &[Tag]) -> Self
+    pub fn new_signature_request<S>(to_sign: S, content: Option<String>, tags: &[Tag]) -> Self
     where
         S: Into<String>,
     {
-        Self::new(Kind::SignatureRequest, content, tags)
+        let tags = [&vec![Tag::ToSignPayload(to_sign.into())], &tags[..]].concat();
+        Self::new(Kind::SignatureRequest, content.unwrap_or_default(), &tags)
+    }
+
+    /// Signature response
+    ///
+    /// TBD: NIP-70 <https://github.com/nostr-protocol/nips/blob/master/01.md>
+    ///
+    /// # Example
+    /// ```rust,no_run
+    /// use nostr::EventBuilder;
+    ///
+    /// let signature = SECP256K1.sign_schnorr(&payload_to_sign, &alice_keys.key_pair()?);
+    /// let builder = EventBuilder::new_signature_response("signature", Some("Optional memo"), &[]);
+    /// ```
+    pub fn new_signature_response(signature: Signature, content: Option<String>, tags: &[Tag]) -> Self
+    {
+        let tags = [&vec![Tag::Signature(signature)], &tags[..]].concat();
+        Self::new(Kind::SignatureResponse, content.unwrap_or_default(), &tags)
     }
 
 
@@ -431,7 +449,7 @@ mod tests {
             "6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e",
         )?);
 
-        let event = EventBuilder::new_signature_request("<payload>", &vec![]).to_event(&keys)?;
+        let event = EventBuilder::new_signature_request("<payload>", None, &vec![]).to_event(&keys)?;
 
         let serialized = event.as_json();
         let deserialized = Event::from_json(serialized)?;
