@@ -63,8 +63,10 @@ pub enum Kind {
     Replaceable(u16),
     /// Ephemeral event (must be between 20000 and <30000)
     Ephemeral(u16),
-    /// Ephemeral event sent from one account to another requesting a signature of the event's content
+    /// Ephemeral (?) event sent from one account to another requesting a signature of the event's content
     SignatureRequest,
+    /// Ephemeral (?) event sent as a reply to a SignatureRequest type
+    SignatureResponse,
     /// Parameterized Replacabe event (must be between 30000 and <40000)
     ParameterizedReplaceable(u16),
     /// Custom
@@ -107,7 +109,8 @@ impl From<u64> for Kind {
             1984 => Self::Reporting,
             9734 => Self::ZapRequest,
             9735 => Self::Zap,
-            9999 => Self::SignatureRequest,
+            9991 => Self::SignatureRequest,
+            9992 => Self::SignatureResponse,
             22242 => Self::Authentication,
             30023 => Self::LongFormTextNote,
             x if (10_000..20_000).contains(&x) => Self::Replaceable(x as u16),
@@ -143,7 +146,8 @@ impl From<Kind> for u64 {
             Kind::ZapRequest => 9734,
             Kind::Zap => 9735,
             Kind::Authentication => 22242,
-            Kind::SignatureRequest => 9999,
+            Kind::SignatureRequest => 9991,
+            Kind::SignatureResponse => 9992,
             Kind::LongFormTextNote => 30023,
             Kind::Replaceable(u) => u as u64,
             Kind::Ephemeral(u) => u as u64,
