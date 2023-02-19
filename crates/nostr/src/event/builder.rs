@@ -183,7 +183,7 @@ impl EventBuilder {
     /// ```rust,no_run
     /// use nostr::EventBuilder;
     ///
-    /// let builder = EventBuilder::new_signature_request("Sign this payload", Some("Here is supporting memo"), &[]);
+    /// let builder = EventBuilder::new_signature_request("Sign this payload", Some("Here is supporting memo".to_string()), &[]);
     /// ```
     pub fn new_signature_request<S>(to_sign: S, content: Option<String>, tags: &[Tag]) -> Self
     where
@@ -200,9 +200,18 @@ impl EventBuilder {
     /// # Example
     /// ```rust,no_run
     /// use nostr::EventBuilder;
-    ///
-    /// let signature = SECP256K1.sign_schnorr(&payload_to_sign, &alice_keys.key_pair()?);
-    /// let builder = EventBuilder::new_signature_response("signature", Some("Optional memo"), &[]);
+    /// use nostr::SECP256K1;
+    /// use bitcoin_hashes::sha256::Hash as Sha256Hash;
+    /// use bitcoin_hashes::Hash;
+    /// use std::str::FromStr;
+    /// 
+    /// const ALICE_SK: &str = "0e1db7418df1c6453ce42e7f4507b8823fc23e86e1f4f33d7fafc83d366e6e97";
+    /// let alice_keys = nostr::Keys::new(secp256k1::SecretKey::from_str(ALICE_SK).unwrap());
+    /// let raw_payload_to_sign = "payload to sign".as_bytes();
+    /// let hashed_payload = Sha256Hash::hash(raw_payload_to_sign);
+    /// let message = secp256k1::Message::from_slice(&hashed_payload).unwrap();
+    /// let signature = SECP256K1.sign_schnorr(&message, &alice_keys.key_pair().unwrap());
+    /// let builder = EventBuilder::new_signature_response(signature, Some("Optional memo".to_string()), &[]);
     /// ```
     pub fn new_signature_response(signature: Signature, content: Option<String>, tags: &[Tag]) -> Self
     {
